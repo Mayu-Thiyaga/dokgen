@@ -20,9 +20,24 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 @Service
-public class GenerateUtils {
+public class GenerateToDifferentFormats {
 
-    private FileUtils fileUtils = new FileUtils();
+    private RetrieveResources retrieveResources = new RetrieveResources();
+
+    private Node parseMarkdown(String content) {
+        Parser parser = Parser.builder().build();
+        return parser.parse(content);
+    }
+
+    private String renderToHTML(Node document) {
+        HtmlRenderer renderer = HtmlRenderer.builder().build();
+        return renderer.render(document);
+    }
+
+    private String convertMarkdownTemplateToHtml(String content) {
+        Node document = parseMarkdown(content);
+        return renderToHTML(document);
+    }
 
     public void addDocumentParts(Document document){
         String resourceLocation = "./content/assets/htmlParts/";
@@ -47,7 +62,7 @@ public class GenerateUtils {
         Element head = document.head();
 
         head.append("<meta charset=\"UTF-8\">");
-        head.append("<style>" + fileUtils.getCss(cssName) + "</style>");
+        head.append("<style>" + retrieveResources.getCss(cssName) + "</style>");
 
         return document;
     }
@@ -92,26 +107,5 @@ public class GenerateUtils {
         catch (IOException e){
             e.printStackTrace();
         }
-    }
-
-    private String convertMarkdownTemplateToHtml(String content) {
-        Node document = parseDocument(content);
-        return renderToHTML(document);
-    }
-
-    private Node parseDocument(String content) {
-        return getMarkdownToHtmlParser().parse(content);
-    }
-
-    private String renderToHTML(Node document) {
-        return getHtmlRenderer().render(document);
-    }
-
-    private Parser getMarkdownToHtmlParser() {
-        return Parser.builder().build();
-    }
-
-    private HtmlRenderer getHtmlRenderer() {
-        return HtmlRenderer.builder().build();
     }
 }

@@ -45,44 +45,26 @@ public class JsonUtils {
 
     public JsonNode extractInterleavingFields(String templateName, JsonNode jsonContent, boolean useTestSet) {
         JsonNode valueFields;
-        if(useTestSet){
+        if(useTestSet) {
             valueFields = getTestSetField(
                     templateName,
                     jsonContent.get("testSetName").textValue()
             );
-        }
-        else{
+        } else {
             return jsonContent.get("interleavingFields");
         }
         return valueFields;
     }
 
-    public String validateTestData(String templateName, String json) {
+    public void validateTestData(String templateName, String json) throws ValidationException {
         String jsonSchemaLocation = "./content/templates/" + templateName + "/" + templateName + ".schema.json";
         try (InputStream inputStream = new FileInputStream(jsonSchemaLocation)) {
 
             JSONObject rawSchema = new JSONObject(new JSONTokener(inputStream));
             Schema schema = SchemaLoader.load(rawSchema);
-
-            try {
-                schema.validate(new JSONObject(json)); // throws a ValidationException if this object is invalid
-            } catch (ValidationException e) {
-                JSONObject jsonObject = e.toJSON();
-                return jsonObject.toString();
-            }
+            schema.validate(new JSONObject(json)); // throws a ValidationException if this object is invalid
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return null;
-    }
-
-    public String getEmptyTestData(String templateName) {
-        String path = "./content/templates/" + templateName + "/TomtTestsett.json";
-        try {
-            return new String(Files.readAllBytes(Paths.get(path)));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 }

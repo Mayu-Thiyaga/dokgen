@@ -11,9 +11,11 @@ import com.github.jknack.handlebars.context.MapValueResolver;
 import com.github.jknack.handlebars.context.MethodValueResolver;
 import com.github.jknack.handlebars.io.FileTemplateLoader;
 import com.github.jknack.handlebars.io.TemplateLoader;
-import no.nav.familie.dokumentgenerator.dokgen.utils.FileUtils;
-import no.nav.familie.dokumentgenerator.dokgen.utils.GenerateUtils;
+import no.nav.familie.dokumentgenerator.dokgen.utils.FileManager;
+import no.nav.familie.dokumentgenerator.dokgen.utils.RetrieveResources;
+import no.nav.familie.dokumentgenerator.dokgen.utils.GenerateToDifferentFormats;
 import no.nav.familie.dokumentgenerator.dokgen.utils.JsonUtils;
+import org.everit.json.schema.ValidationException;
 import org.jsoup.nodes.Document;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -33,9 +35,10 @@ import java.util.List;
 @Service
 public class TemplateService {
     private Handlebars handlebars;
-    private GenerateUtils generateUtils;
+    private GenerateToDifferentFormats generateToDifferentFormats;
     private JsonUtils jsonUtils;
-    private FileUtils fileUtils;
+    private RetrieveResources retrieveResource;
+    private FileManager fileManager;
 
 
     private Handlebars getHandlebars() {
@@ -46,16 +49,20 @@ public class TemplateService {
         this.handlebars = handlebars;
     }
 
-    private void setGenerateUtils(GenerateUtils generateUtils) {
-        this.generateUtils = generateUtils;
+    private void setGenerateToDifferentFormats(GenerateToDifferentFormats generateToDifferentFormats) {
+        this.generateToDifferentFormats = generateToDifferentFormats;
     }
 
     private void setJsonUtils(JsonUtils jsonUtils) {
         this.jsonUtils = jsonUtils;
     }
 
-    private void setFileUtils(FileUtils fileUtils) {
-        this.fileUtils = fileUtils;
+    private void setRetrieveResource(RetrieveResources retrieveResource) {
+        this.retrieveResource = retrieveResource;
+    }
+
+    private void setFileManager(FileManager fileManager) {
+        this.fileManager = fileManager;
     }
 
     private Template compileTemplate(String templateName) {
@@ -108,22 +115,51 @@ public class TemplateService {
         return headers;
     }
 
+
+    private ResponseEntity returnConvertedLetter(String templateName, JsonNode interleavingFields, String format) {
+        String compiledTemplate = getCompiledTemplate(templateName, interleavingFields);
+        if(compiledTemplate == null){
+            return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+        }
+
+        if (format.equals("html")) {
+            Document styledHtml = generateToDifferentFormats.appendHtmlMetadata(compiledTemplate, "html");
+            return new ResponseEntity<>(styledHtml.html(), genHtmlHeaders(), HttpStatus.OK);
+        } else if (format.equals("pdf") || format.equals("pdfa")) {
+            Document styledHtml = generateToDifferentFormats.appendHtmlMetadata(compiledTemplate, "pdf");
+            generateToDifferentFormats.addDocumentParts(styledHtml);
+
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            generateToDifferentFormats.generatePDF(styledHtml, outputStream);
+            byte[] pdfContent = outputStream.toByteArray();
+
+            if (pdfContent == null) {
+                return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+
+            return new ResponseEntity<>(pdfContent, genPdfHeaders(templateName), HttpStatus.OK);
+        }
+        return null;
+    }
+
+
     @PostConstruct
     public void loadHandlebarTemplates() {
         TemplateLoader loader = new FileTemplateLoader(new File("./content/templates/").getPath());
         setHandlebars(new Handlebars(loader));
-        setFileUtils(new FileUtils());
-        setGenerateUtils(new GenerateUtils());
+        setRetrieveResource(new RetrieveResources());
+        setGenerateToDifferentFormats(new GenerateToDifferentFormats());
         setJsonUtils(new JsonUtils());
+        setFileManager(new FileManager());
     }
 
     public List<String> getTemplateSuggestions() {
-        return fileUtils.getResourceNames("./content/templates");
+        return retrieveResource.getTemplateNames("./content/templates");
     }
 
     public String getMarkdownTemplate(String templateName) {
         String content = null;
-        String path = fileUtils.getTemplatePath(templateName);
+        String path = retrieveResource.getTemplatePath(templateName);
         try {
             content = new String(Files.readAllBytes(Paths.get(path)));
         } catch (IOException e) {
@@ -156,7 +192,7 @@ public class TemplateService {
         try{
             JsonNode jsonContent = jsonUtils.getJsonFromString(payload);
 
-            fileUtils.saveTemplateFile(
+            fileManager.saveTemplateFile(
                     templateName,
                     jsonContent.get("markdownContent").textValue()
             );
@@ -176,61 +212,29 @@ public class TemplateService {
         return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    private ResponseEntity returnConvertedLetter(String templateName, JsonNode interleavingFields, String format) {
-        String compiledTemplate = getCompiledTemplate(templateName, interleavingFields);
-        if(compiledTemplate == null){
-            return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
-        }
-
-        if (format.equals("html")) {
-            Document styledHtml = generateUtils.appendHtmlMetadata(compiledTemplate, "html");
-            return new ResponseEntity<>(styledHtml.html(), genHtmlHeaders(), HttpStatus.OK);
-        } else if (format.equals("pdf") || format.equals("pdfa")) {
-            Document styledHtml = generateUtils.appendHtmlMetadata(compiledTemplate, "pdf");
-            generateUtils.addDocumentParts(styledHtml);
-
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            generateUtils.generatePDF(styledHtml, outputStream);
-            byte[] pdfContent = outputStream.toByteArray();
-
-            if (pdfContent == null) {
-                return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-            }
-
-            return new ResponseEntity<>(pdfContent, genPdfHeaders(templateName), HttpStatus.OK);
-        }
-        return null;
-    }
 
     public List<String> getTestdataNames(String templateName) {
         String path = String.format("./content/templates/%s/testdata/", templateName);
-        return fileUtils.getResourceNames(path);
+        return retrieveResource.getTemplateNames(path);
     }
 
 
     public String getEmptyTestSet(String templateName) {
-        return jsonUtils.getEmptyTestData(templateName);
+        return retrieveResource.getEmptyTestData(templateName);
     }
 
     public ResponseEntity createTestSet(String templateName, String testSetName, String testSetContent) {
-        String errorMessage = jsonUtils.validateTestData(templateName, testSetContent);
-        String responseMessage = null;
-        String createdFileName = null;
-        HttpStatus httpStatus = HttpStatus.CREATED;
+        String createdFileName;
 
-        if (errorMessage != null) {
-            httpStatus = HttpStatus.BAD_REQUEST;
-            responseMessage = errorMessage;
-        } else {
-            createdFileName = fileUtils.createNewTestSet(templateName, testSetName, testSetContent);
+        try {
+            jsonUtils.validateTestData(templateName, testSetContent);
+            createdFileName = fileManager.createNewTestSet(templateName, testSetName, testSetContent);
+        } catch (ValidationException e) {
+            return new ResponseEntity<>(e.toJSON().toString(), HttpStatus.BAD_REQUEST);
+        } catch (IOException e) {
+            return new ResponseEntity<>("Klarte ikke å lage nytt testsett!", HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
-        if (createdFileName == null) {
-            httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
-        } else {
-            responseMessage = createdFileName;
-        }
-
-        return new ResponseEntity<>(responseMessage, httpStatus);
+        return new ResponseEntity<>(createdFileName, HttpStatus.CREATED);
     }
 }
