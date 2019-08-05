@@ -15,17 +15,49 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
+
 @Component
 public class FileManager {
+
+    private static FileManager single_instance = null;
+    private final String contentRoot;
+
+
+    private FileManager(){
+        this.contentRoot = "./content/";
+    }
+
+    private FileManager(String contentRoot){
+        this.contentRoot = contentRoot;
+    }
 
     private void writeToFile(String folder, String fileName, String content) throws IOException {
         BufferedWriter writer = new BufferedWriter(
                 new FileWriter(
-                        new File("./content/templates/" + folder + "/" + fileName).getPath()
+                        new File(this.getContentRoot() + "templates/" + folder + "/" + fileName).getPath()
                 )
         );
         writer.append(content);
         writer.close();
+    }
+
+
+    public static FileManager getInstance() {
+        if (single_instance == null)
+            single_instance = new FileManager();
+
+        return single_instance;
+    }
+
+    public static FileManager getInstance(String contentRoot) {
+        if (single_instance == null)
+            single_instance = new FileManager(contentRoot);
+
+        return single_instance;
+    }
+
+    public String getContentRoot() {
+        return contentRoot;
     }
 
     public void saveTemplateFile(String templateName, String markdownContent) {
@@ -46,8 +78,20 @@ public class FileManager {
         }
     }
 
+
+    String getCss(String cssName){
+        try {
+            return new String(Files.readAllBytes(Paths.get(this.getContentRoot() + "assets/css/" + cssName + ".css")));
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Kunne ikke åpne template malen");
+        }
+        return null;
+    }
+
+
     public String createNewTestSet(String templateName, String testSetName, String testSetContent) throws IOException {
-        String path = "content/templates/" + templateName + "/testdata/" + testSetName + ".json";
+        String path = this.getContentRoot() + "templates/" + templateName + "/testdata/" + testSetName + ".json";
         Path newFilePath = Paths.get(path);
         Files.write(newFilePath, testSetContent.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE);
         return testSetName;

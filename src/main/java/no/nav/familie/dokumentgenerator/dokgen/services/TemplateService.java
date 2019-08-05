@@ -40,6 +40,13 @@ public class TemplateService {
     private RetrieveResources retrieveResource;
     private FileManager fileManager;
 
+    public TemplateService() {
+        this.fileManager = FileManager.getInstance();
+    }
+
+    public TemplateService(String contentRoot) {
+        this.fileManager = FileManager.getInstance(contentRoot);
+    }
 
     private Handlebars getHandlebars() {
         return handlebars;
@@ -59,10 +66,6 @@ public class TemplateService {
 
     private void setRetrieveResource(RetrieveResources retrieveResource) {
         this.retrieveResource = retrieveResource;
-    }
-
-    private void setFileManager(FileManager fileManager) {
-        this.fileManager = fileManager;
     }
 
     private Template compileTemplate(String templateName) {
@@ -145,16 +148,17 @@ public class TemplateService {
 
     @PostConstruct
     public void loadHandlebarTemplates() {
-        TemplateLoader loader = new FileTemplateLoader(new File("./content/templates/").getPath());
+        TemplateLoader loader = new FileTemplateLoader(
+                new File(this.fileManager.getContentRoot() + "templates/").getPath()
+        );
         setHandlebars(new Handlebars(loader));
         setRetrieveResource(new RetrieveResources());
         setGenerateToDifferentFormats(new GenerateToDifferentFormats());
         setJsonUtils(new JsonUtils());
-        setFileManager(new FileManager());
     }
 
     public List<String> getTemplateSuggestions() {
-        return retrieveResource.getTemplateNames("./content/templates");
+        return retrieveResource.getTemplateNames(this.fileManager.getContentRoot() + "templates/");
     }
 
     public String getMarkdownTemplate(String templateName) {
@@ -214,7 +218,8 @@ public class TemplateService {
 
 
     public List<String> getTestdataNames(String templateName) {
-        String path = String.format("./content/templates/%s/testdata/", templateName);
+        String path = this.fileManager.getContentRoot() + "templates/" + templateName + "/testdata/";
+//        String path = String.format(this.fileUtils.getContentRoot() + "templates/%s/testdata/", templateName);
         return retrieveResource.getTemplateNames(path);
     }
 

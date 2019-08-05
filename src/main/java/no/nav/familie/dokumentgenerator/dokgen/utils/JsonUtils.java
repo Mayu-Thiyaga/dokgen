@@ -20,6 +20,8 @@ import java.nio.file.Paths;
 @Service
 public class JsonUtils {
 
+    private FileManager fileManager = FileManager.getInstance();
+
     private JsonNode readJsonFile(URI path) {
         if (path != null) {
             ObjectMapper mapper = new ObjectMapper();
@@ -33,8 +35,8 @@ public class JsonUtils {
         return null;
     }
 
-    private JsonNode getTestSetField(String templateName, String testSet) {
-        URI path = Paths.get("./content/templates/" + templateName + "/testdata/" + testSet + ".json").toUri();
+    private JsonNode getTestSetField(String templateName, String testSet){
+        URI path = Paths.get(fileManager.getContentRoot() + "templates/" + templateName + "/testdata/" + testSet + ".json").toUri();
         return readJsonFile(path);
     }
 
@@ -66,5 +68,15 @@ public class JsonUtils {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public String getEmptyTestData(String templateName) {
+        String path = fileManager.getContentRoot() + "templates/" + templateName + "/TomtTestsett.json";
+        try {
+            return new String(Files.readAllBytes(Paths.get(path)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

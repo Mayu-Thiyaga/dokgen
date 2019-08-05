@@ -16,7 +16,7 @@ import org.apache.commons.io.IOUtils;
 import org.jsoup.nodes.Document;
 import org.junit.Test;
 
-public class GenerateToDifferentFormatsTests {
+public class GenerateUtilsTests {
     private static final String TEST_OUTPUT_PATH = "target/regression-tests/";
     private static final String EXPECTED_RES_PATH = "/test-fixtures/expected-pdf/";
     private GenerateToDifferentFormats generateToDifferentFormats = new GenerateToDifferentFormats();
@@ -28,7 +28,7 @@ public class GenerateToDifferentFormatsTests {
         // Load expected PDF document from resources, change class below.
         byte[] expectedPdfBytes;
 
-        try (InputStream expectedIs = GenerateToDifferentFormatsTests.class.getResourceAsStream(EXPECTED_RES_PATH + resource + ".pdf")) {
+        try (InputStream expectedIs = GenerateUtilsTests.class.getResourceAsStream(EXPECTED_RES_PATH + resource + ".pdf")) {
             expectedPdfBytes = IOUtils.toByteArray(expectedIs);
         }
 
