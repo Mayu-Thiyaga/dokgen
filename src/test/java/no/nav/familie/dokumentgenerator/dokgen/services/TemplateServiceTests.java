@@ -1,32 +1,47 @@
 package no.nav.familie.dokumentgenerator.dokgen.services;
 
-import static org.hamcrest.CoreMatchers.*;
-import static org.hamcrest.MatcherAssert.assertThat;
-
 import no.nav.familie.dokumentgenerator.dokgen.utils.FileManager;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.MatcherAssert.assertThat;
+
 @RunWith(SpringRunner.class)
 @SpringBootTest
 public class TemplateServiceTests {
 
-    @Autowired
     private TemplateService templateService;
     private static String contentRoot;
+    private static FileManager fileManager;
+
+    @ClassRule
+    public static TemporaryFolder temporaryFolder = new TemporaryFolder(new File("./"));
+
+
+    @Inject
+    private void setTemplateService(TemplateService templateService) {
+        this.templateService = templateService;
+    }
+
+    @Inject
+    private void setFileManager(FileManager fileManager) {
+        this.fileManager = fileManager;
+    }
 
     private static void copyAssetsToContentRoot() throws IOException {
         File srcDir = new File("./src/test/resources/test-assets/content/assets");
@@ -47,23 +62,19 @@ public class TemplateServiceTests {
         );
     }
 
-    @ClassRule
-    public static TemporaryFolder temporaryFolder = new TemporaryFolder(new File("./"));
-
     @BeforeClass
     public static void setup() throws IOException {
+
         File contentFolder = temporaryFolder.newFolder("content");
         contentRoot = temporaryFolder.getRoot() + "/" + contentFolder.getName() + "/";
 
         copyAssetsToContentRoot();
-
-        FileManager fileManager = FileManager.getInstance();
+        FileManager fileManager = new FileManager();
         ReflectionTestUtils.setField(fileManager, "contentRoot", contentRoot);
     }
 
     @AfterClass
     public static void tearDown() {
-        FileManager fileManager = FileManager.getInstance();
         ReflectionTestUtils.setField(fileManager, "contentRoot", "./content/");
     }
 

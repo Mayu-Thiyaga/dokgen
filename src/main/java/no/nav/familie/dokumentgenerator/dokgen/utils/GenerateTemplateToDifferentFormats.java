@@ -24,18 +24,7 @@ import java.nio.file.Paths;
 @Service
 public class GenerateTemplateToDifferentFormats {
 
-    private FileManager fileManager;
     private RetrieveResources resources;
-
-    @Inject
-    private void setFileManager(FileManager fileManager) {
-        this.fileManager = fileManager;
-    }
-
-    @Inject
-    private void setRetrieveResources(RetrieveResources resources) {
-        this.resources = resources;
-    }
 
     private Node parseMarkdown(String content) {
         Parser parser = Parser.builder().build();
@@ -52,8 +41,13 @@ public class GenerateTemplateToDifferentFormats {
         return renderToHTML(document);
     }
 
+    @Inject
+    public GenerateTemplateToDifferentFormats(RetrieveResources resources) {
+        this.resources = resources;
+    }
+
     public void addDocumentParts(Document document){
-        String resourceLocation = fileManager.getContentRoot() + "assets/htmlParts/";
+        String resourceLocation = FileManager.getContentRoot() + "assets/htmlParts/";
         try{
 
             String header = new String(Files.readAllBytes(Paths.get(resourceLocation + "headerTemplate.html")));
@@ -85,25 +79,25 @@ public class GenerateTemplateToDifferentFormats {
 
         PdfRendererBuilder builder = new PdfRendererBuilder();
         try{
-            byte[] colorProfile = IOUtils.toByteArray(new FileInputStream(fileManager.getContentRoot() + "assets/sRGB2014.icc"));
+            byte[] colorProfile = IOUtils.toByteArray(new FileInputStream(FileManager.getContentRoot() + "assets/sRGB2014.icc"));
 
             builder
                     .useFont(
-                            new File(fileManager.getContentRoot() + "assets/fonts/fontpack/SourceSansPro-Regular.ttf"),
+                            new File(FileManager.getContentRoot() + "assets/fonts/fontpack/SourceSansPro-Regular.ttf"),
                             "Source Sans Pro",
                             400,
                             BaseRendererBuilder.FontStyle.NORMAL,
                             false
                     )
                     .useFont(
-                            new File(fileManager.getContentRoot() + "assets/fonts/fontpack/SourceSansPro-Bold.ttf"),
+                            new File(FileManager.getContentRoot() + "assets/fonts/fontpack/SourceSansPro-Bold.ttf"),
                             "Source Sans Pro",
                             700,
                             BaseRendererBuilder.FontStyle.OBLIQUE,
                             false
                     )
                     .useFont(
-                            new File(fileManager.getContentRoot() + "assets/fonts/fontpack/SourceSansPro-Italic.ttf"),
+                            new File(FileManager.getContentRoot() + "assets/fonts/fontpack/SourceSansPro-Italic.ttf"),
                             "Source Sans Pro",
                             400,
                             BaseRendererBuilder.FontStyle.ITALIC,

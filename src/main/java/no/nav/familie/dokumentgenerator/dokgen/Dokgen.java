@@ -9,5 +9,4 @@ public class Dokgen {
     public static void main(String[] args) {
         SpringApplication.run(Dokgen.class, args);
     }
-
 }

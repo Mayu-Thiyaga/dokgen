@@ -7,8 +7,9 @@ import org.everit.json.schema.ValidationException;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONObject;
 import org.json.JSONTokener;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
+import javax.inject.Inject;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -17,10 +18,8 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-@Service
+@Component
 public class JsonUtils {
-
-    private FileManager fileManager = FileManager.getInstance();
 
     private JsonNode readJsonFile(URI path) {
         if (path != null) {
@@ -35,8 +34,8 @@ public class JsonUtils {
         return null;
     }
 
-    private JsonNode getTestSetField(String templateName, String testSet){
-        URI path = Paths.get(fileManager.getContentRoot() + "templates/" + templateName + "/testdata/" + testSet + ".json").toUri();
+    private JsonNode getTestSetField(String templateName, String testSet) {
+        URI path = Paths.get(FileManager.getContentRoot() + "templates/" + templateName + "/testdata/" + testSet + ".json").toUri();
         return readJsonFile(path);
     }
 
@@ -47,7 +46,7 @@ public class JsonUtils {
 
     public JsonNode extractInterleavingFields(String templateName, JsonNode jsonContent, boolean useTestSet) {
         JsonNode valueFields;
-        if(useTestSet) {
+        if (useTestSet) {
             valueFields = getTestSetField(
                     templateName,
                     jsonContent.get("testSetName").textValue()
@@ -71,7 +70,7 @@ public class JsonUtils {
     }
 
     public String getEmptyTestData(String templateName) {
-        String path = fileManager.getContentRoot() + "templates/" + templateName + "/TomtTestsett.json";
+        String path = FileManager.getContentRoot() + "templates/" + templateName + "/TomtTestsett.json";
         try {
             return new String(Files.readAllBytes(Paths.get(path)));
         } catch (IOException e) {

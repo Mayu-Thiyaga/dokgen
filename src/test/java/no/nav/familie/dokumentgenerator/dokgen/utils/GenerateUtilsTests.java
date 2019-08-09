@@ -19,7 +19,7 @@ import org.junit.Test;
 public class GenerateUtilsTests {
     private static final String TEST_OUTPUT_PATH = "target/regression-tests/";
     private static final String EXPECTED_RES_PATH = "/test-fixtures/expected-pdf/";
-    private GenerateToDifferentFormats generateToDifferentFormats = new GenerateToDifferentFormats();
+    private GenerateTemplateToDifferentFormats generateTemplateToDifferentFormats;
     private RetrieveResources retrieveResources = new RetrieveResources();
 
     private boolean runTest(String resource, byte[] actualPdfBytes) throws IOException {
@@ -70,10 +70,10 @@ public class GenerateUtilsTests {
     @Test
     public void testPdfGeneration() throws IOException {
         String html = getDocumentFromHtmlFixture("minimal1");
-        Document doc = generateToDifferentFormats.appendHtmlMetadata(html, "pdf");
+        Document doc = generateTemplateToDifferentFormats.appendHtmlMetadata(html, "pdf");
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        generateToDifferentFormats.generatePDF(doc, outputStream);
+        generateTemplateToDifferentFormats.generatePDF(doc, outputStream);
         byte[] expectedBytes = outputStream.toByteArray();
 
         assertTrue(runTest("minimal1", expectedBytes));
@@ -82,11 +82,11 @@ public class GenerateUtilsTests {
     @Test
     public void testPdfGenerationWithSvg() throws IOException {
         String html = getDocumentFromHtmlFixture("svg1");
-        Document doc = generateToDifferentFormats.appendHtmlMetadata(html, "pdf");
-        generateToDifferentFormats.addDocumentParts(doc);
+        Document doc = generateTemplateToDifferentFormats.appendHtmlMetadata(html, "pdf");
+        generateTemplateToDifferentFormats.addDocumentParts(doc);
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        generateToDifferentFormats.generatePDF(doc, outputStream);
+        generateTemplateToDifferentFormats.generatePDF(doc, outputStream);
         byte[] expectedBytes = outputStream.toByteArray();
 
         assertTrue(runTest("svg1", expectedBytes));
@@ -95,11 +95,11 @@ public class GenerateUtilsTests {
     @Test
     public void testPdfGenerationWithList() throws IOException {
         String html = getDocumentFromHtmlFixture("list1");
-        Document doc = generateToDifferentFormats.appendHtmlMetadata(html, "pdf");
-        generateToDifferentFormats.addDocumentParts(doc);
+        Document doc = generateTemplateToDifferentFormats.appendHtmlMetadata(html, "pdf");
+        generateTemplateToDifferentFormats.addDocumentParts(doc);
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        generateToDifferentFormats.generatePDF(doc, outputStream);
+        generateTemplateToDifferentFormats.generatePDF(doc, outputStream);
         byte[] expectedBytes = outputStream.toByteArray();
 
         assertTrue(runTest("list1", expectedBytes));

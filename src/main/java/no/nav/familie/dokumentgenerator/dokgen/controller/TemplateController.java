@@ -2,27 +2,34 @@ package no.nav.familie.dokumentgenerator.dokgen.controller;
 
 
 import io.swagger.annotations.ApiOperation;
+import no.nav.familie.dokumentgenerator.dokgen.services.TestSetService;
+import no.nav.familie.dokumentgenerator.dokgen.utils.FileManager;
 import org.json.JSONObject;
 
 import no.nav.familie.dokumentgenerator.dokgen.services.TemplateService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.inject.Inject;
 import java.util.List;
 
 @CrossOrigin(origins = {"http://localhost:3000"})
 @RestController
 public class TemplateController {
 
-    private final TemplateService templateManagementService;
+    private TemplateService templateManagementService;
+    private TestSetService testSetService;
 
-    public TemplateController(TemplateService templateManagementService) {
-        this.templateManagementService = templateManagementService;
+    @Inject
+    public TemplateController(FileManager fileManager, TemplateService templateService, TestSetService testSetService) {
+        this.templateManagementService = templateService;
+        this.testSetService = testSetService;
     }
 
     @GetMapping("/mal/alle")
-    @ApiOperation(value = "Få en oversikt over alle malforslagene")
+    @ApiOperation(value = " Få en oversikt over alle malforslagene")
     public List<String> getAllTemplateNames() {
         return templateManagementService.getTemplateSuggestions();
     }
@@ -51,6 +58,7 @@ public class TemplateController {
     }
 
 
+    @ConditionalOnProperty(prefix="my.controller", name="enabled")
     @PutMapping(value = "/mal/{format}/{templateName}", consumes = "application/json")
     @ApiOperation(value = "")
     public ResponseEntity updateTemplateContent(@PathVariable String format,
@@ -69,20 +77,20 @@ public class TemplateController {
     @ApiOperation(value = "Hent de forskjellige testdataene for spesifikk mal")
     public ResponseEntity<List<String>> getTestData(@PathVariable String templateName) {
 
-        List<String> response = templateManagementService.getTestdataNames(templateName);
+        List<String> response = testSetService.getTestdataNames(templateName);
 
         if (response == null) {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
-        return new ResponseEntity<>(templateManagementService.getTestdataNames(templateName), HttpStatus.OK);
+        return new ResponseEntity<>(testSetService.getTestdataNames(templateName), HttpStatus.OK);
     }
 
 
     @GetMapping(value = "mal/{templateName}/tomtTestSett", produces = "application/json")
     @ApiOperation(value = "Hent et tomt testsett for malen som kan fylles ut")
     public ResponseEntity<String> getEmptyTestSet(@PathVariable String templateName) {
-        return new ResponseEntity<>(templateManagementService.getEmptyTestSet(templateName), HttpStatus.OK);
+        return new ResponseEntity<>(testSetService.getEmptyTestSet(templateName), HttpStatus.OK);
     }
 
 
@@ -104,7 +112,7 @@ public class TemplateController {
         JSONObject obj = new JSONObject(payload);
         String testSetName = obj.getString("name");
         String testSetContent = obj.getString("content");
-        return templateManagementService.createTestSet(templateName, testSetName, testSetContent);
+        return testSetService.createTestSet(templateName, testSetName, testSetContent);
     }
 
 

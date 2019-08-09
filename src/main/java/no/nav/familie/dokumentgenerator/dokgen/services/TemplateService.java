@@ -12,10 +12,9 @@ import com.github.jknack.handlebars.context.MethodValueResolver;
 import com.github.jknack.handlebars.io.FileTemplateLoader;
 import com.github.jknack.handlebars.io.TemplateLoader;
 import no.nav.familie.dokumentgenerator.dokgen.utils.FileManager;
-import no.nav.familie.dokumentgenerator.dokgen.utils.RetrieveResources;
-import no.nav.familie.dokumentgenerator.dokgen.utils.GenerateToDifferentFormats;
+import no.nav.familie.dokumentgenerator.dokgen.utils.GenerateTemplateToDifferentFormats;
 import no.nav.familie.dokumentgenerator.dokgen.utils.JsonUtils;
-import org.everit.json.schema.ValidationException;
+import no.nav.familie.dokumentgenerator.dokgen.utils.RetrieveResources;
 import org.jsoup.nodes.Document;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -24,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
+import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -35,38 +35,18 @@ import java.util.List;
 @Service
 public class TemplateService {
     private Handlebars handlebars;
-    private GenerateToDifferentFormats generateToDifferentFormats;
-    private JsonUtils jsonUtils;
-    private RetrieveResources retrieveResource;
-    private FileManager fileManager;
-
-    public TemplateService() {
-        this.fileManager = FileManager.getInstance();
-    }
-
-    public TemplateService(String contentRoot) {
-        this.fileManager = FileManager.getInstance(contentRoot);
+    private final GenerateTemplateToDifferentFormats generateTemplateToDifferentFormats;
+    private final JsonUtils jsonUtils;
+    private final RetrieveResources resources;
+    
+    private void setHandlebars(Handlebars handlebars) {
+        this.handlebars = handlebars;
     }
 
     private Handlebars getHandlebars() {
         return handlebars;
     }
 
-    private void setHandlebars(Handlebars handlebars) {
-        this.handlebars = handlebars;
-    }
-
-    private void setGenerateToDifferentFormats(GenerateToDifferentFormats generateToDifferentFormats) {
-        this.generateToDifferentFormats = generateToDifferentFormats;
-    }
-
-    private void setJsonUtils(JsonUtils jsonUtils) {
-        this.jsonUtils = jsonUtils;
-    }
-
-    private void setRetrieveResource(RetrieveResources retrieveResource) {
-        this.retrieveResource = retrieveResource;
-    }
 
     private Template compileTemplate(String templateName) {
         try {
@@ -80,7 +60,7 @@ public class TemplateService {
     private String getCompiledTemplate(String templateName, JsonNode interleavingFields) {
         try {
             Template template = compileTemplate(templateName);
-            if(template != null){
+            if (template != null) {
                 return template.apply(insertTestData(interleavingFields));
             }
             return null;
@@ -101,14 +81,14 @@ public class TemplateService {
                 ).build();
     }
 
-    private HttpHeaders genHtmlHeaders(){
+    private HttpHeaders genHtmlHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.TEXT_HTML);
 
         return headers;
     }
 
-    private HttpHeaders genPdfHeaders(String templateName){
+    private HttpHeaders genPdfHeaders(String templateName) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
         String filename = templateName + ".pdf";
@@ -121,19 +101,19 @@ public class TemplateService {
 
     private ResponseEntity returnConvertedLetter(String templateName, JsonNode interleavingFields, String format) {
         String compiledTemplate = getCompiledTemplate(templateName, interleavingFields);
-        if(compiledTemplate == null){
+        if (compiledTemplate == null) {
             return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
         }
 
         if (format.equals("html")) {
-            Document styledHtml = generateToDifferentFormats.appendHtmlMetadata(compiledTemplate, "html");
+            Document styledHtml = generateTemplateToDifferentFormats.appendHtmlMetadata(compiledTemplate, "html");
             return new ResponseEntity<>(styledHtml.html(), genHtmlHeaders(), HttpStatus.OK);
         } else if (format.equals("pdf") || format.equals("pdfa")) {
-            Document styledHtml = generateToDifferentFormats.appendHtmlMetadata(compiledTemplate, "pdf");
-            generateToDifferentFormats.addDocumentParts(styledHtml);
+            Document styledHtml = generateTemplateToDifferentFormats.appendHtmlMetadata(compiledTemplate, "pdf");
+            generateTemplateToDifferentFormats.addDocumentParts(styledHtml);
 
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            generateToDifferentFormats.generatePDF(styledHtml, outputStream);
+            generateTemplateToDifferentFormats.generatePDF(styledHtml, outputStream);
             byte[] pdfContent = outputStream.toByteArray();
 
             if (pdfContent == null) {
@@ -145,25 +125,28 @@ public class TemplateService {
         return null;
     }
 
-
+    @Inject
+    public TemplateService( GenerateTemplateToDifferentFormats generator, JsonUtils jsonUtils, RetrieveResources resources) {
+        this.generateTemplateToDifferentFormats = generator;
+        this.jsonUtils = jsonUtils;
+        this.resources = resources;
+    }
+    
     @PostConstruct
     public void loadHandlebarTemplates() {
         TemplateLoader loader = new FileTemplateLoader(
-                new File(this.fileManager.getContentRoot() + "templates/").getPath()
+                new File(FileManager.getContentRoot() + "templates/").getPath()
         );
         setHandlebars(new Handlebars(loader));
-        setRetrieveResource(new RetrieveResources());
-        setGenerateToDifferentFormats(new GenerateToDifferentFormats());
-        setJsonUtils(new JsonUtils());
     }
 
     public List<String> getTemplateSuggestions() {
-        return retrieveResource.getTemplateNames(this.fileManager.getContentRoot() + "templates/");
+        return resources.retrieveFileNames(FileManager.getContentRoot() + "templates/");
     }
 
     public String getMarkdownTemplate(String templateName) {
         String content = null;
-        String path = retrieveResource.getTemplatePath(templateName);
+        String path = resources.getTemplatePath(templateName);
         try {
             content = new String(Files.readAllBytes(Paths.get(path)));
         } catch (IOException e) {
@@ -173,8 +156,8 @@ public class TemplateService {
         return content;
     }
 
-    public ResponseEntity returnLetterResponse(String format, String templateName, String payload, boolean useTestSet){
-        try{
+    public ResponseEntity returnLetterResponse(String format, String templateName, String payload, boolean useTestSet) {
+        try {
             JsonNode jsonContent = jsonUtils.getJsonFromString(payload);
 
             JsonNode valueFields = jsonUtils.extractInterleavingFields(
@@ -184,8 +167,7 @@ public class TemplateService {
             );
 
             return returnConvertedLetter(templateName, valueFields, format);
-        }
-        catch (IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
@@ -193,10 +175,10 @@ public class TemplateService {
     }
 
     public ResponseEntity saveAndReturnTemplateResponse(String format, String templateName, String payload, boolean useTestSet) {
-        try{
+        try {
             JsonNode jsonContent = jsonUtils.getJsonFromString(payload);
 
-            fileManager.saveTemplateFile(
+            FileManager.saveTemplateFile(
                     templateName,
                     jsonContent.get("markdownContent").textValue()
             );
@@ -208,38 +190,10 @@ public class TemplateService {
             );
 
             return returnConvertedLetter(templateName, valueFields, format);
-        }
-        catch (IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
         return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-
-    public List<String> getTestdataNames(String templateName) {
-        String path = this.fileManager.getContentRoot() + "templates/" + templateName + "/testdata/";
-//        String path = String.format(this.fileUtils.getContentRoot() + "templates/%s/testdata/", templateName);
-        return retrieveResource.getTemplateNames(path);
-    }
-
-
-    public String getEmptyTestSet(String templateName) {
-        return retrieveResource.getEmptyTestData(templateName);
-    }
-
-    public ResponseEntity createTestSet(String templateName, String testSetName, String testSetContent) {
-        String createdFileName;
-
-        try {
-            jsonUtils.validateTestData(templateName, testSetContent);
-            createdFileName = fileManager.createNewTestSet(templateName, testSetName, testSetContent);
-        } catch (ValidationException e) {
-            return new ResponseEntity<>(e.toJSON().toString(), HttpStatus.BAD_REQUEST);
-        } catch (IOException e) {
-            return new ResponseEntity<>("Klarte ikke å lage nytt testsett!", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-
-        return new ResponseEntity<>(createdFileName, HttpStatus.CREATED);
     }
 }

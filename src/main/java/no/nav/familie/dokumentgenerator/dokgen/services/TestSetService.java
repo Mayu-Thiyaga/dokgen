@@ -35,6 +35,7 @@ public class TestSetService {
         this.resources = resources;
     }
 
+
     public List<String> getTestdataNames(String templateName) {
         String path = fileManager.getContentRoot() + "templates/" + templateName + "/testdata/";
         return resources.retrieveFileNames(path);
@@ -51,9 +52,9 @@ public class TestSetService {
         return null;
     }
 
-//    public String getEmptyTestSet(String templateName) {
-//        return resources.getEmptyTestData(templateName);
-//    }
+    public String getEmptyTestSet(String templateName) {
+        return jsonUtils.getEmptyTestData(templateName);
+    }
 
     public ResponseEntity createTestSet(String templateName, String testSetName, String testSetContent) {
         String createdFileName;

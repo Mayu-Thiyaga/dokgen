@@ -1,6 +1,5 @@
 package no.nav.familie.dokumentgenerator.dokgen.utils;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,7 +7,6 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -21,10 +19,23 @@ public class RetrieveResources {
     private static final Logger LOG = LoggerFactory.getLogger(RetrieveResources.class);
 
     public String getTemplatePath(String templateName) {
-        return String.format("./content/templates/%1$s/%1$s.hbs", templateName);
+        return "./content/templates/" + templateName + "/" + templateName + ".hbs";
     }
 
-    public List<String> getTemplateNames(String path) {
+    String getCss(String cssName) {
+        try {
+            return new String(Files.readAllBytes(Paths.get("./content/assets/css/" + cssName + ".css")));
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Kunne ikke åpne template malen");
+        }
+        return null;
+    }
+
+
+    public List<String> retrieveFileNames(String path) {
+        System.out.println("jeg kjører");
+        System.out.println("path = " + path);
         List<String> names = new ArrayList<>();
         File folder;
         File[] listOfFiles;
@@ -40,25 +51,5 @@ public class RetrieveResources {
         }
 
         return names;
-    }
-
-     String getCss(String cssName){
-        try {
-            return new String(Files.readAllBytes(Paths.get("./content/assets/css/" + cssName + ".css")));
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.out.println("Kunne ikke åpne template malen");
-        }
-        return null;
-    }
-
-    public String getEmptyTestData(String templateName) {
-        String path = "./content/templates/" + templateName + "/TomtTestsett.json";
-        try {
-            return new String(Files.readAllBytes(Paths.get(path)));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 }
